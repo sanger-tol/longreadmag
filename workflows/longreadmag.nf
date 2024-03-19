@@ -23,7 +23,8 @@ for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true
 //
 // IMPORT: SUBWORKFLOWS CALLED BY THE MAIN
 //
-include { YAML_INPUT        } from '../subworkflows/local/yaml_input'
+include { YAML_INPUT          } from '../subworkflows/local/yaml_input'
+include { COVERAGE_ESTIMATION } from '../subworkflows/local/coverage_estimation'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,10 +59,14 @@ workflow LONGREADMAG {
         input_ch
     )
 
+
     //
     // SUBWORKFLOW: Coverage Estimation
     //
-    // TODO
+    COVERAGE_ESTIMATION (
+        YAML_INPUT.out.reference_ch
+    )
+    ch_versions     = ch_versions.mix( COVERAGE_ESTIMATION.out.versions )
 
     //
     // SUBWORKFLOW: HiC Mapping
@@ -92,24 +97,6 @@ workflow LONGREADMAG {
     // SUBWORKFLOW: Bin Classification
     //
     // TODO
-
-
-    //
-    // SUBWORKFLOW: 
-    //
-    INGEST_HIGLASS (
-        ch_mcool                       // Channel: path(file)
-        ch_genome                      // Channel: path(file)
-        ch_higlass_data_project_dir    // channel: val(higlass_data_project_dir)
-        ch_higlass_upload_directory    // channel: val(higlass_upload_directory)
-    )
-    ch_versions     = ch_versions.mix( INGEST_HIGLASS.out.versions )
-
-
-
-
-
-
 
     //
     // SUBWORKFLOW: Collates version data from prior subworflows

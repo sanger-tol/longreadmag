@@ -11,6 +11,41 @@
                         "installed_by": [
                             "modules"
                         ]
+                    },
+                    "metabat2/jgisummarizebamcontigdepths": {
+                        "branch": "master",
+                        "git_sha": "3f5420aa22e00bd030a2556dfdffc9e164ec0ec5",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "minimap2/align": {
+                        "branch": "master",
+                        "git_sha": "2c2d1cf80866dbd6dd0ea5d61ddd59533a72d41e",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "samtools/faidx": {
+                        "branch": "master",
+                        "git_sha": "f4596fe0bdc096cf53ec4497e83defdb3a94ff62",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "samtools/sort": {
+                        "branch": "master",
+                        "git_sha": "4352dbdb09ec40db71e9b172b97a01dcf5622c26",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "samtools/view": {
+                        "branch": "master",
+                        "git_sha": "0bd7d2333a88483aa0476acea172e9f5f6dd83bb",
+                        "installed_by": [
+                            "modules"
+                        ]
                     }
                 }
             },
