@@ -62,7 +62,7 @@
                     },
                     "genomad/endtoend": {
                         "branch": "master",
-                        "git_sha": "6d46786420b4d7bc88eba026eb389c0c5535d120",
+                        "git_sha": "781f2625386fe0bf2f337c7b99f56e618c59fc99",
                         "installed_by": ["modules"]
                     },
                     "gtdbtk/classifywf": {
@@ -140,6 +140,16 @@
                         "git_sha": "9339809fcb90af8a8b7051e6cd914894d5c52002",
                         "installed_by": ["cram_map_illumina_hic"]
                     },
+                    "semibin/concatenatefasta": {
+                        "branch": "master",
+                        "git_sha": "ace7e02d9d1a61d9998f6bbed18e723945def56b",
+                        "installed_by": ["modules"]
+                    },
+                    "semibin/multieasybin": {
+                        "branch": "master",
+                        "git_sha": "9f8642c41bf67d2787820e4c4aa34c0356a0d464",
+                        "installed_by": ["modules"]
+                    },
                     "semibin/singleeasybin": {
                         "branch": "master",
                         "git_sha": "041fbd98880c9af7762aec2f54fa4f35503d50f2",
@@ -152,6 +162,11 @@
                         "patch": "modules/nf-core/seqkit/replace/seqkit-replace.diff"
                     },
                     "seqkit/split2": {
+                        "branch": "master",
+                        "git_sha": "d07a945f421a4a91ce4e5a22db63e0e7f8741607",
+                        "installed_by": ["modules"]
+                    },
+                    "seqkit/stats": {
                         "branch": "master",
                         "git_sha": "d07a945f421a4a91ce4e5a22db63e0e7f8741607",
                         "installed_by": ["modules"]

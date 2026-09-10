@@ -26,7 +26,7 @@ workflow BINNING_VAMB {
             false,
             false,
             [],
-            []
+            [],
         )
 
         //
@@ -34,12 +34,12 @@ workflow BINNING_VAMB {
         //
         CENTRIFUGER_LINEAGE(
             CENTRIFUGER_CENTRIFUGER.out.classification_file,
-            ch_centrifuger_db
+            ch_centrifuger_db,
         )
 
-        ch_vamb_taxonomy_input = CENTRIFUGER_LINEAGE.out.lineage_tsv
-            .map { meta, tsv -> [meta - meta.subMap("single_end"), tsv] }
-    } else {
+        ch_vamb_taxonomy_input = CENTRIFUGER_LINEAGE.out.lineage_tsv.map { meta, tsv -> [meta - meta.subMap("single_end"), tsv] }
+    }
+    else {
         ch_vamb_taxonomy_input = ch_assemblies.map { meta, _asm -> [meta, []] }
     }
 
@@ -55,6 +55,19 @@ workflow BINNING_VAMB {
 
     VAMB_BIN(ch_vamb_input)
 
+    ch_vamb_multi_bins = BINNING_VAMB.out.bins
+        .filter { meta, _bins -> meta?.collated }
+        .flatMap { meta, bins ->
+            return meta.ids
+                .withIndex()
+                .collect { id, idx ->
+                    def bins_subset = bins.findAll { bin -> bin.getName() =~ id }
+                    def assembler = meta.assemblers[idx]
+                    return [[id: id, binner: "vamb_multi", assembler: assembler], bins_subset]
+                }
+        }
+
     emit:
-    bins = VAMB_BIN.out.bins
+    single_bins = BINNING_VAMB.out.bins.filter { meta, _bins -> !meta?.collated }
+    multi_bins  = ch_vamb_multi_bins
 }

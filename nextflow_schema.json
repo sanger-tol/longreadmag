@@ -99,7 +99,7 @@
                     "description": "Which Hi-C aligner to use - either bwa-mem2 or minimap2.",
                     "enum": ["bwamem2", "minimap2"]
                 },
-                "hic_mapping_cram_bin_size": {
+                "hic_mapping_cram_slices_per_chunk": {
                     "type": "integer",
                     "default": 10000,
                     "description": "When mapping Hi-C, map each CRAM file in slices of this size."
@@ -111,7 +111,7 @@
                     "minimum": 0
                 }
             },
-            "required": ["long_read_mapping_reads_per_chunk", "hic_mapping_cram_bin_size", "hic_mapping_minq"]
+            "required": ["long_read_mapping_reads_per_chunk", "hic_mapping_minq"]
         },
         "binning_options": {
             "title": "Binning options",
@@ -162,6 +162,16 @@
                     "default": true,
                     "description": "Enable binning with Comebin."
                 },
+                "enable_semibin2_single": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable binning with Semibin2 in single-sample mode."
+                },
+                "enable_semibin2_multi": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable binning with Semibin2 in multi-sample mode."
+                },
                 "enable_vamb": {
                     "type": "boolean",
                     "default": true,
@@ -174,11 +184,6 @@
                 "centrifuger_db": {
                     "type": "string",
                     "description": "Path to a centrifuger <prefix>.1.cfg file. The other files are detected automatically."
-                },
-                "enable_semibin2": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Enable binning with Semibin2."
                 },
                 "semibin_environment_model": {
                     "type": "string",

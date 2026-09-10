@@ -4,6 +4,7 @@ include { GAWK as GAWK_FASTATOCONTIG2BIN     } from '../../../modules/nf-core/ga
 include { GAWK as GAWK_MAXBIN2_DEPTHS        } from '../../../modules/nf-core/gawk'
 include { METABAT2_METABAT2                  } from '../../../modules/nf-core/metabat2/metabat2'
 include { METATOR_PIPELINE                   } from '../../../modules/nf-core/metator/pipeline'
+include { SEMIBIN_MULTIEASYBIN               } from '../../../modules/nf-core/semibin/multieasybin/main'
 include { SEMIBIN_SINGLEEASYBIN              } from '../../../modules/nf-core/semibin/singleeasybin'
 include { SEQKIT_REPLACE as FIX_METATOR_BINS } from '../../../modules/nf-core/seqkit/replace'
 include { SEQKIT_SPLIT2 as SPLIT_CIRCLES     } from '../../../modules/nf-core/seqkit/split2'
@@ -13,28 +14,27 @@ include { BINNING_VAMB as BINNING_TAXVAMB    } from '../../../subworkflows/local
 
 workflow BINNING {
     take:
-    ch_assemblies // channel: [[meta], contigs]
-    ch_circular_contigs // channel: [meta, circular_contigs]
-    ch_depths // channel: [[meta], depths_file]
-    ch_bam // channel: [[meta], bam]
-    ch_hic_pairs // channel: [[meta], bam]
-    val_extract_circular_contigs
-    val_enable_metabat2
-    val_enable_maxbin2
-    val_enable_comebin
-    val_enable_semibin2
-    val_enable_vamb
-    val_enable_taxvamb
+    ch_assemblies
+    ch_circular_contigs
+    ch_depths
+    ch_bams
+    ch_hic_pairs
     ch_centrifuger_db
-    val_enable_metator
+    val_binners
 
     main:
     ch_bins = channel.empty()
 
+    ch_assemblies_individual = ch_assemblies.filter { meta, _fasta -> !meta?.collated }
+    ch_assemblies_collated = ch_assemblies.filter { meta, _fasta -> meta?.collated }
+    ch_bam_individual = ch_bams.filter { meta, _bam -> !meta?.collated }
+    ch_bam_collated = ch_bams.filter { meta, _bam -> meta?.collated }
+
+
     //
     // Module: Split circular contigs into separate bin files
     //
-    if (val_extract_circular_contigs) {
+    if (val_binners.circular) {
         SPLIT_CIRCLES(ch_circular_contigs.map { meta, contigs -> [meta + [single_end: true], contigs] })
 
         ch_bins = ch_bins.mix(
@@ -47,9 +47,9 @@ workflow BINNING {
     //
     // Module: Bin assembly using Metabat2
     //
-    if (val_enable_metabat2) {
+    if (val_binners.metabat2) {
         METABAT2_METABAT2(
-            ch_assemblies.combine(ch_depths, by: 0)
+            ch_assemblies_individual.combine(ch_depths, by: 0)
         )
 
         ch_bins = ch_bins.mix(
@@ -60,10 +60,10 @@ workflow BINNING {
     //
     // Logic: Bin assembly with MaxBin2
     //
-    if (val_enable_maxbin2) {
+    if (val_binners.maxbin2) {
         GAWK_MAXBIN2_DEPTHS(ch_depths, file("${projectDir}/bin/convert_depths_maxbin2.awk"), true)
 
-        ch_maxbin2_input = ch_assemblies
+        ch_maxbin2_input = ch_assemblies_individual
             .combine(GAWK_MAXBIN2_DEPTHS.out.output, by: 0)
             .map { meta, contigs, depths ->
                 [meta, contigs, [], depths]
@@ -79,12 +79,12 @@ workflow BINNING {
         )
     }
 
-    if (val_enable_comebin) {
+    if (val_binners.comebin) {
         //
         // Module: Bin assembly using Comebin
         //
-        ch_comebin_input = ch_assemblies
-            .combine(ch_bam, by: 0)
+        ch_comebin_input = ch_assemblies_individual
+            .combine(ch_bam_individual, by: 0)
             .map { meta, asm, bam -> [meta, asm, bam] }
 
         COMEBIN_RUNCOMEBIN(ch_comebin_input)
@@ -94,22 +94,41 @@ workflow BINNING {
         )
     }
 
-    if (val_enable_semibin2) {
+    if (val_binners.semibin2_single) {
         //
         // Module: Bin assembly using Semibin
         //
-        ch_semibin_input = ch_assemblies
-            .combine(ch_bam, by: 0)
+        ch_semibin_input = ch_assemblies_individual
+            .combine(ch_bam_individual, by: 0)
             .map { meta, asm, bam -> [meta, asm, bam] }
 
         SEMIBIN_SINGLEEASYBIN(ch_semibin_input)
 
         ch_bins = ch_bins.mix(
-            SEMIBIN_SINGLEEASYBIN.out.output_fasta.map { meta, fasta -> [meta + [binner: "semibin"], fasta] }
+            SEMIBIN_SINGLEEASYBIN.out.output_fasta.map { meta, fasta -> [meta + [binner: "semibin_single"], fasta] }
         )
     }
 
-    if (val_enable_vamb) {
+    if (val_binners.semibin2_multi) {
+        ch_semibin_input = ch_assemblies_collated
+            .combine(ch_bam_collated, by: 0)
+            .map { meta, asm, bam -> [meta, asm, bam] }
+
+        SEMIBIN_MULTIEASYBIN(ch_semibin_input)
+
+        ch_semibin_multi_bins = SEMIBIN_MULTIEASYBIN.out.output_fasta.flatMap { meta, bins ->
+            return meta.ids
+                .withIndex()
+                .collect { id, idx ->
+                    def bins_subset = bins.findAll { bin -> bin.getName() =~ id }
+                    def assembler = meta.assemblers[idx]
+                    return [[id: id, binner: "semibin_multi", assembler: assembler], bins_subset]
+                }
+        }
+        ch_bins = ch_bins.mix(ch_semibin_multi_bins)
+    }
+
+    if (val_binners.vamb) {
         //
         // Subworkflow: Bin assembly with VAMB in standard mode
         //
@@ -117,15 +136,14 @@ workflow BINNING {
             ch_assemblies,
             ch_depths,
             false,
-            channel.empty()
+            channel.empty(),
         )
 
-        ch_bins = ch_bins.mix(
-            BINNING_VAMB.out.bins.map { meta, fasta -> [meta + [binner: "vamb"], fasta] }
-        )
+        ch_bins = ch_bins.mix(BINNING_VAMB.out.single_bins)
+        ch_bins = ch_bins.mix(BINNING_VAMB.out.multi_bins)
     }
 
-    if (val_enable_taxvamb) {
+    if (val_binners.taxvamb) {
         //
         // Subworkflow: Bin assembly with VAMB with taxonomy
         //
@@ -133,19 +151,18 @@ workflow BINNING {
             ch_assemblies,
             ch_depths,
             true,
-            ch_centrifuger_db
+            ch_centrifuger_db,
         )
 
-        ch_bins = ch_bins.mix(
-            BINNING_TAXVAMB.out.bins.map { meta, fasta -> [meta + [binner: "taxvamb"], fasta] }
-        )
+        ch_bins = ch_bins.mix(BINNING_TAXVAMB.out.single_bins)
+        ch_bins = ch_bins.mix(BINNING_TAXVAMB.out.multi_bins)
     }
 
-    if (val_enable_metator) {
+    if (val_binners.metator) {
         //
         // Module: Bin assembly using Metator
         //
-        ch_metator_inputs = ch_assemblies
+        ch_metator_inputs = ch_assemblies_individual
             .combine(ch_hic_pairs, by: 0)
             .map { meta, asm, pairs ->
                 [meta, asm, pairs, []]
